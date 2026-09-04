@@ -318,21 +318,21 @@ void PresetInteractor::load_preset_bundle(const IO::BundlePaths& bundle_paths)
             }
         }
 
-        // TODO: remove this when config wizard is ready
+        // Materialize the concrete printer configurations from every loaded vendor bundle, so
+        // that third party vendors produce selectable printers just like the bundled ones.
+        // TODO: move this into the config wizard once it is ready.
         {
+            DEBUG_ASSERT(preset_bundle.vendor_bundles.contains("PrusaResearch"));
             HwConfigEvaluator config_eval;
-            for (const auto& vendor : {"PrusaResearch", "PrusaResearchSLA"}) {
-                auto vendor_bundle_it = preset_bundle.vendor_bundles.find(vendor);
-                ASSERT(vendor_bundle_it != preset_bundle.vendor_bundles.end() || strcmp(vendor, "PrusaResearch") != 0);
-                if (vendor_bundle_it == preset_bundle.vendor_bundles.end()
-                    || std::ranges::any_of(
+            for (auto& [vendor_id, vendor_bundle] : preset_bundle.vendor_bundles) {
+                // Already materialized, e.g. carried over from the previously loaded bundle.
+                if (std::ranges::any_of(
                         preset_bundle.printer_configs | std::views::values,
-                        [&](const auto& hw_config) { return hw_config.vendor_id == vendor; }
+                        [&](const auto& hw_config) { return hw_config.vendor_id == vendor_id; }
                     ))
                 {
                     continue;
                 }
-                auto& vendor_bundle = vendor_bundle_it->second;
                 for (const auto& hw_printer_template : vendor_bundle.vendor_data.printer_configs) {
                     auto printer_config = config_eval.create_printer_config(
                         hw_printer_template,
